@@ -150,7 +150,7 @@ class VehicleIouMacro(IOUMacro): nm = 'vehicle'
 class BicycleIouMacro(IOUMacro): nm = 'bicycle'
 
 
-def display_diagnostics(learner, dls=None, return_vals=False):
+def display_diagnostics(learner, ds_idx=1, return_vals=False):
     """
     Display a confusion matrix for the unet learner.
     If `dls` is None it will get the validation set from the Learner
@@ -162,7 +162,7 @@ def display_diagnostics(learner, dls=None, return_vals=False):
     See: https://docs.fast.ai/tutorial.pets.html#adding-a-test-dataloader-for-inference
     
     """
-    probs, targs = learner.get_preds(dl = dls)
+    probs, targs = learner.get_preds(ds_idx=ds_idx)
     preds = probs.argmax(dim=1)
     classes = list(params.BDD_CLASSES.values())
     y_true = targs.flatten().numpy()
@@ -183,5 +183,27 @@ def display_diagnostics(learner, dls=None, return_vals=False):
     fig.set_figheight(10) 
     disp.ax_.set_title('Confusion Matrix (by Pixels)', fontdict={'fontsize': 32, 'fontweight': 'medium'})
     fig.show()
-    
+    fig.autofmt_xdate(rotation=45)
+
     if return_vals: return countdf, disp
+
+
+
+def create_dice_table(samples, outputs, predictions, class_labels):
+    "Creates a wandb table with predictions and targets side by side"
+
+    def _to_str(l):
+        return [str(x) for x in l]
+    
+    items = list(zip(samples, outputs, predictions))
+    
+    table = wandb.Table(
+        columns=["Image"]
+        + _to_str(class_labels.values())
+        + ["Foreground Acc"],
+    )
+    # we create one row per sample
+    for item in progress_bar(items):
+        table.add_data(*create_row(*item, class_labels=class_labels))
+    
+    return table
